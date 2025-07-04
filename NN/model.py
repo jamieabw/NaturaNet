@@ -1,1 +1,0 @@
-# this is where the neural network base class will be implemented using only numpy

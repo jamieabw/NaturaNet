@@ -7,3 +7,6 @@ class Cell:
         self.colour = DEFAULT_HEIGHT_COLOURS[self.heightLevel]
         self.x = xPos * 20
         self.y = yPos * 20
+        self.hasFood = False
+        self.hasPred = False
+

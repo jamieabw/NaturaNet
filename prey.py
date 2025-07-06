@@ -8,20 +8,21 @@ DEFAULT_PREY_VISION_SCOPE = 5
 DEFAULT_PREY_SPEED = 2
 class Prey:
     size = DEFAULT_PREY_SIZE
+    preyPopulation = 0
     def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=15, darwinFactor=0):
-        self.x = random.randint(0, windowSize[0])
-        self.y = random.randint(0, windowSize[1])
+        self.x = random.randint(0, windowSize[0]-1)
+        self.y = random.randint(0, windowSize[1]-1)
         self.cellSize = cellSize
         self.windowSize = windowSize
         self.parentCell = (self.x // self.cellSize[0], self.y // self.cellSize[1])
         self.foodEaten = foodEaten
         self.TTL = TTL
         self.darwinFactor = darwinFactor
-        # intelligence will be based on 6 input neurones: x, y, distance to food  (x, y), distance to predator (x, y)
+        # intelligence will be based on distance to nearest food, distance to nearest predator, angle to both of those in degrees, and (x,y)
         # architecture is 6,10,10,16,2
         if network is None:
             self.intelligence = [
-                DenseLayer(3, 10),
+                DenseLayer(4, 10),
                 Tanh(),
                 DenseLayer(10, 10),
                 Tanh(),
@@ -33,8 +34,14 @@ class Prey:
         else:
             self.intelligence = network
 
-    def movement(self, distanceToFood, distanceToPred, cells):
-        decision = self.predict(np.array([self.x / 1000, self.y / 800, distanceToFood]))
+    def movement(self, distanceToFood, foodCell, distanceToPred, cells):
+        if self.TTL <= 0:
+            return
+        dy, dx = (((foodCell[0] * 20) - self.y) * -1,(foodCell[1] * 20)-self.x)
+        angle = math.atan2(dy, dx) / math.pi
+        #print(self.x, self.y, foodCell[1] * 20, foodCell[0] * 20, angle * math.pi)
+        #print(np.array([self.x / 1000, self.y / 800, distanceToFood / 5, angle]))
+        decision = self.predict(np.array([self.x / 1000, self.y / 800, distanceToFood / 8, angle]))
         xMove, yMove = decision
         #print(xMove.shape, yMove.shape)
         if self.x + xMove * DEFAULT_PREY_SPEED >= 1000 or self.x + xMove * DEFAULT_PREY_SPEED <= 0:
@@ -45,7 +52,12 @@ class Prey:
         #print(int(self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1], int(self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0],)
         #print(np.array(cells).shape)
         #print(self.parentCell)
-        if  cells[int(self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1]][int(self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0]].heightLevel <= cells[self.parentCell[1]][self.parentCell[0]].heightLevel + 1:
+        newX = int((self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0])
+        newY = int((self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1])
+        newX = max(0, min(newX, len(cells[0]) - 1))
+        newY = max(0, min(newY, len(cells) - 1))
+
+        if cells[newY][newX].heightLevel <= cells[self.parentCell[1]][self.parentCell[0]].heightLevel + 1:
             self.x += xMove * DEFAULT_PREY_SPEED
             self.y += yMove * DEFAULT_PREY_SPEED
             self.parentCell = (int(self.x // self.cellSize[0]), int(self.y // self.cellSize[1]))
@@ -54,7 +66,8 @@ class Prey:
     def predict(self, input):
         output = input
         for layer in self.intelligence:
-            output = layer.forwardPropagation(output)
+            output = layer.forwardPropagation(np.nan_to_num(output, nan=0.0))
+        #print(output)
         return output
     
     def eat(self):
@@ -64,7 +77,33 @@ class Prey:
     def setDarwinFactor(self):
         # function will be used to set a darwin factor which is what will be used to determine the most fit agents to reproduce for the next generation
         #self.darwinFactor = self.foodEaten * deathPenalty * someOtherAttribute
+        if self.TTL > 0:
+            #print("survived")
+            self.darwinFactor = self.foodEaten * 2
+        else:
+            self.darwinFactor = self.foodEaten * 0.5
+            #print("dead")
         pass
+
+    @classmethod
+    def evolvePrey(cls, parentA, parentB):
+        # no mutation added yet, pure natural selection
+        childNetwork = []
+        for layerA, layerB in zip(parentA.intelligence, parentB.intelligence):
+            if isinstance(layerA, DenseLayer):
+                weightMask = np.random.rand(*layerA.weights.shape) < 0.5
+                biasMask = np.random.rand(*layerA.biases.shape) < 0.5
+                childWeights = np.where(weightMask, layerA.weights, layerB.weights)
+                childBias = np.where(biasMask, layerA.biases, layerB.biases)
+                newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
+                newLayer.weights = childWeights
+                newLayer.biases = childBias
+                #print(layerA.weights.shape[1], layerA.weights.shape[0])
+            else:
+                childNetwork.append(layerA)
+        return childNetwork.reverse()
+
+
     
     """NOTE: REMEMBER CELLS[y][x] ACCESSES the x, y cell on a regular grid"""
     def findNearestFruit(self, cells):
@@ -76,17 +115,22 @@ class Prey:
         while cellsToCheck:
             newCells = []
             for x, y, dist in cellsToCheck:
+                gridWidth = len(cells[0])
+                gridHeight = len(cells)
+                if not (0 <= x < gridWidth and 0 <= y < gridHeight):
+                    print(f"Out-of-bounds access attempt: x={x}, y={y}")
+                    continue  # skip this iteration
                 currentCell = cells[y][x]
                 if currentCell.hasFood:
                     # You can now return both the cell and the distance value
-                    return currentCell, dist
+                    return (y, x), dist
 
                 adjacent = self.getAdjacentCells(x, y, dist, visited, cells)
                 newCells.extend(adjacent)
 
             cellsToCheck = newCells
 
-        return None, None  # No reachable food
+        return 9999, 9999  # No reachable food
 
     
         

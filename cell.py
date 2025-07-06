@@ -9,4 +9,5 @@ class Cell:
         self.y = yPos * 20
         self.hasFood = False
         self.hasPred = False
+        self.foodCoords = []
 

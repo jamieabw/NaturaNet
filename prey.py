@@ -22,13 +22,11 @@ class Prey:
         # architecture is 6,10,10,16,2
         if network is None:
             self.intelligence = [
-                DenseLayer(4, 10),
+                DenseLayer(2, 8),
                 Tanh(),
-                DenseLayer(10, 10),
+                DenseLayer(8, 8),
                 Tanh(),
-                DenseLayer(10,16),
-                Tanh(),
-                DenseLayer(16,2),
+                DenseLayer(8,2),
                 Tanh()
             ]
         else:
@@ -37,11 +35,17 @@ class Prey:
     def movement(self, distanceToFood, foodCell, distanceToPred, cells):
         if self.TTL <= 0:
             return
-        dy, dx = (((foodCell[0] * 20) - self.y) * -1,(foodCell[1] * 20)-self.x)
+        euclideanDistance = math.sqrt((cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x) ** 2 + (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y) ** 2)
+        #print(euclideanDistance / 120)
+        dy, dx = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y),(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)
+        #print(self.x, self.y, cells[foodCell[0]][foodCell[1]].foodCoords[0][0], cells[foodCell[0]][foodCell[1]].foodCoords[0][1])
         angle = math.atan2(dy, dx) / math.pi
+        #print(angle * math.pi)
+        #print(dy, dx)
         #print(self.x, self.y, foodCell[1] * 20, foodCell[0] * 20, angle * math.pi)
         #print(np.array([self.x / 1000, self.y / 800, distanceToFood / 5, angle]))
-        decision = self.predict(np.array([self.x / 1000, self.y / 800, distanceToFood / 8, angle]))
+        #decision = self.predict(np.array([self.x / 1000, self.y / 800, distanceToFood / 5, angle, self.TTL / 30]))
+        decision = self.predict(np.array([dy / 100, dx/100]))
         xMove, yMove = decision
         #print(xMove.shape, yMove.shape)
         if self.x + xMove * DEFAULT_PREY_SPEED >= 1000 or self.x + xMove * DEFAULT_PREY_SPEED <= 0:
@@ -88,20 +92,34 @@ class Prey:
     @classmethod
     def evolvePrey(cls, parentA, parentB):
         # no mutation added yet, pure natural selection
+        mutationRate = 0.05
+        mutationStrength = 0.1
         childNetwork = []
+        #print(np.array(parentA.intelligence).shape)
+        #print(np.array(parentB.intelligence).shape)
         for layerA, layerB in zip(parentA.intelligence, parentB.intelligence):
-            if isinstance(layerA, DenseLayer):
+            if isinstance(layerA, DenseLayer)and isinstance(layerB, DenseLayer):
                 weightMask = np.random.rand(*layerA.weights.shape) < 0.5
                 biasMask = np.random.rand(*layerA.biases.shape) < 0.5
                 childWeights = np.where(weightMask, layerA.weights, layerB.weights)
                 childBias = np.where(biasMask, layerA.biases, layerB.biases)
                 newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
+                #print(layerA.weights.shape[1], layerA.weights.shape[0])
+                if np.random.rand() < mutationRate:
+                    childWeights += np.random.normal(0, mutationStrength, childWeights.shape)
+                    childBias += np.random.normal(0, mutationStrength, childBias.shape)
+                    #print(childWeights)
                 newLayer.weights = childWeights
                 newLayer.biases = childBias
-                #print(layerA.weights.shape[1], layerA.weights.shape[0])
+                childNetwork.append(newLayer)
+            elif isinstance(layerA, Tanh) and isinstance(layerB, Tanh):
+                # You can just copy one of them since activations do not have parameters
+                childNetwork.append(Tanh())
             else:
-                childNetwork.append(layerA)
-        return childNetwork.reverse()
+                raise ValueError(f"Layer mismatch: {type(layerA)} vs {type(layerB)}")
+        #childNetwork.reverse()
+        #print(np.array(childNetwork).shape)
+        return childNetwork
 
 
     

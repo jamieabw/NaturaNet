@@ -15,6 +15,8 @@ class Prey(Entity):
     mutationStrength = 0.05
     def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=20, darwinFactor=0):
         super().__init__(random, windowSize, cellSize, network, foodEaten, TTL)
+        self.sprite = pygame.image.load("Assets\\prey1.png").convert_alpha()
+        self.sprite = pygame.transform.scale(self.sprite, (18, 18))
         self.darwinFactor = darwinFactor
         self.penalty = 0
         self.moveCloserBonus = 0

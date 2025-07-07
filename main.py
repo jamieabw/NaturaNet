@@ -37,7 +37,7 @@ class NaturaNet:
         for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
             temp = []
             for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                temp.append(Cell(x, y, 0))
+                temp.append(Cell(x, y, random.randint(0,1)))
             self.cells.append(temp)
         self.startNewGeneration()
         # NOTE: self.cells[y][x] accesses cell (x,y)
@@ -60,7 +60,7 @@ class NaturaNet:
             for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
                 temp = []
                 for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                    temp.append(Cell(x, y, 0))
+                    temp.append(Cell(x, y, random.randint(0,1)))
                 self.cells.append(temp)
             if self.generation != 0 and self.generation % 10 == 0:
                 Prey.mutationRate = 0.4
@@ -149,9 +149,9 @@ class NaturaNet:
         text.set_alpha(128)
         self.display.blit(text, (10, 10))
         for food in self.food:
-            if food is not None: pygame.draw.rect(self.display, Food.colour, (food.x, food.y, food.size, food.size))
+            if food is not None: self.display.blit(food.sprite, (food.x, food.y))
         for prey in self.prey:
-            if prey.TTL > 0: pygame.draw.rect(self.display, (0,0,255), (prey.x, prey.y, Prey.size, Prey.size))
+            if prey.TTL > 0: self.display.blit(prey.sprite, (prey.x, prey.y))
         for pred in self.predators:
             pygame.draw.rect(self.display, (255,0,0), (pred.x, pred.y, pred.size, pred.size))
         self.display.blit(text, (10, 10))

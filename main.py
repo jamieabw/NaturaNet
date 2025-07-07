@@ -104,8 +104,6 @@ class NaturaNet:
         if self.clockTickCounter % 5 == 0:
             for prey in self.prey:
                 #print(prey.TTL)
-                if prey.TTL == 0:
-                    Prey.preyPopulation -= 1
                 prey.setDarwinFactor()
                 (y, x), distance = prey.findNearestFruit(self.cells)
                 prey.movement(distance, (y,x),random.randint(0,10), self.cells)

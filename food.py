@@ -1,5 +1,5 @@
 import pygame
-FOOD_SIZE =  5
+FOOD_SIZE =  7
 class Food:
     colour = (0,255,0)
     def __init__(self, random, windowSize, cellSize):

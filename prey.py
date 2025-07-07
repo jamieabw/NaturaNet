@@ -5,7 +5,7 @@ import numpy as np
 from entity import Entity
 import math
 import pygame
-DEFAULT_PREY_SIZE = 7
+DEFAULT_PREY_SIZE = 9
 DEFAULT_PREY_VISION_SCOPE = 5
 DEFAULT_PREY_SPEED = 2
 # this will eventually be a child class of an Entity class which cleans this up
@@ -13,7 +13,6 @@ class Prey(Entity):
     size = DEFAULT_PREY_SIZE
     mutationRate = 0.2
     mutationStrength = 0.05
-    preyPopulation = 0
     def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=20, darwinFactor=0):
         super().__init__(random, windowSize, cellSize, network, foodEaten, TTL)
         self.darwinFactor = darwinFactor

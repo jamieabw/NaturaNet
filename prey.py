@@ -2,32 +2,25 @@ from NN.denseLayer import DenseLayer
 from NN.tanh import Tanh
 from NN.softmax import Softmax
 import numpy as np
+from entity import Entity
 import math
 import pygame
 DEFAULT_PREY_SIZE = 7
 DEFAULT_PREY_VISION_SCOPE = 5
 DEFAULT_PREY_SPEED = 2
 # this will eventually be a child class of an Entity class which cleans this up
-class Prey:
+class Prey(Entity):
     size = DEFAULT_PREY_SIZE
     mutationRate = 0.2
     mutationStrength = 0.05
     preyPopulation = 0
     def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=20, darwinFactor=0):
-        self.x = random.randint(0, windowSize[0]-1)
-        self.y = random.randint(0, windowSize[1]-1)
-        self.cellSize = cellSize
-        self.windowSize = windowSize
-        self.parentCell = (self.x // self.cellSize[0], self.y // self.cellSize[1])
-        self.foodEaten = foodEaten
-        self.TTL = TTL
+        super().__init__(random, windowSize, cellSize, network, foodEaten, TTL)
         self.darwinFactor = darwinFactor
         self.penalty = 0
         self.moveCloserBonus = 0
         self.shortestDistanceEver = 999
         self.foodDiscovered = 0
-        self.previousXMove = 0
-        self.previousYMove = 0
         # intelligence will be based on distance to nearest food, distance to nearest predator, angle to both of those in degrees, and (x,y)
         # architecture is 6,10,10,16,2
         if network is None:
@@ -40,6 +33,17 @@ class Prey:
         else:
             self.intelligence = network
 
+    def getStimuli(self, foodCell, cells):
+        dy, dx = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y)/100,(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)/100
+        distanceFromTop = self.y / self.windowSize[1]
+        distanceFromBottom = (self.windowSize[1] - self.y) / self.windowSize[1]
+        distanceFromLeft = self.x / self.windowSize[0]
+        distanceFromRight = (self.windowSize[0] - self.x) / self.windowSize[0]
+        stimuli = np.array([dx, dy, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
+        noise = np.random.normal(0, 0.01, stimuli.shape) 
+        return stimuli + noise
+
+
     def movement(self, distanceToFood, foodCell, distanceToPred, cells):
         if self.TTL <= 0:
             return
@@ -48,27 +52,9 @@ class Prey:
             self.shortestDistanceEver = euclideanDistance
             self.moveCloserBonus += 0.1
 
-        #print(euclideanDistance / 120)
-        # TODO: you need to add further info for their decision making like distance to center etc
-        # NOTE: also make something to keep track of distance travelled so it can be used for darwinFactor
-        dy, dx = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y),(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)
-        #print(dy, dx, euclideanDistance)
-        #print(self.x, self.y, cells[foodCell[0]][foodCell[1]].foodCoords[0][0], cells[foodCell[0]][foodCell[1]].foodCoords[0][1])
-        distanceFromTop = self.y / self.windowSize[1]
-        distanceFromBottom = (self.windowSize[1] - self.y) / self.windowSize[1]
-        distanceFromLeft = self.x / self.windowSize[0]
-        distanceFromRight = (self.windowSize[0] - self.x) / self.windowSize[0]
-        #print(distanceFromBottom, distanceFromRight)
-        #angle = math.atan2(dy, dx) / math.pi
-        stimuli = np.array([dx / 100, dy/100, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
-        #print(stimuli)
-        noise = np.random.normal(0, 0.01, stimuli.shape) 
-        stimuli += noise
-        #print(stimuli)
+
+        stimuli = self.getStimuli(foodCell, cells)
         decision = np.argmax(self.predict(stimuli))
-        #print(decision)
-        #upMove, downMove, leftMove, RightMove = decision
-        #print(xMove.shape, yMove.shape)
         xMove, yMove = 0,0
         if decision == 0:
             yMove = -1
@@ -89,10 +75,6 @@ class Prey:
         if self.y + yMove * DEFAULT_PREY_SPEED >= 800 or self.y + yMove * DEFAULT_PREY_SPEED <= 0:    
             yMove = 0
             self.penalty += 0.5
-        
-        #print(int(self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1], int(self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0],)
-        #print(np.array(cells).shape)
-        #print(self.parentCell)
         newX = int((self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0])
         newY = int((self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1])
         newX = max(0, min(newX, len(cells[0]) - 1))
@@ -104,27 +86,10 @@ class Prey:
             self.parentCell = (int(self.x // self.cellSize[0]), int(self.y // self.cellSize[1]))
             #print(self.parentCell)
 
-    def predict(self, input):
-        output = input
-        for layer in self.intelligence:
-            output = layer.forwardPropagation(np.nan_to_num(output, nan=0.0))
-        #print(output)
-        return output
     
     def eat(self):
         self.TTL += 5
         self.foodEaten += 1
-        
-    def setDarwinFactor(self):
-        # function will be used to set a darwin factor which is what will be used to determine the most fit agents to reproduce for the next generation
-        #self.darwinFactor = self.foodEaten * deathPenalty * someOtherAttribute
-        if self.TTL > 0:
-            #print("survived")
-            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty
-        else:
-            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty
-            #print("dead")
-        pass
 
     @classmethod
     def evolvePrey(cls, parentA, parentB):
@@ -172,10 +137,10 @@ class Prey:
     
     """NOTE: REMEMBER CELLS[y][x] ACCESSES the x, y cell on a regular grid"""
     def findNearestFruit(self, cells):
-        start_x, start_y = self.parentCell
-        cellsToCheck = [(start_x, start_y, 0)]  # (x, y, distance)
+        startX, startY = self.parentCell
+        cellsToCheck = [(startX, startY, 0)]  # (x, y, distance)
         visited = set()
-        visited.add((start_x, start_y))
+        visited.add((startX, startY))
 
         while cellsToCheck:
             newCells = []

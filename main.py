@@ -18,6 +18,7 @@ class NaturaNet:
         pygame.display.init()
         pygame.mixer.init() # joystock.init causing problems with hanging so initialised separately 
         pygame.font.init()
+        self.font = pygame.font.SysFont(None, 30)
         self.width, self.height = width, height
         self.display = pygame.display.set_mode((self.width, self.height))
         pygame.display.set_caption("NaturaNet")
@@ -36,7 +37,7 @@ class NaturaNet:
         for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
             temp = []
             for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                temp.append(Cell(x, y, random.randint(0,1)))
+                temp.append(Cell(x, y, 0))
             self.cells.append(temp)
         self.startNewGeneration()
         # NOTE: self.cells[y][x] accesses cell (x,y)
@@ -59,7 +60,7 @@ class NaturaNet:
             for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
                 temp = []
                 for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                    temp.append(Cell(x, y, random.randint(0,1)))
+                    temp.append(Cell(x, y, 0))
                 self.cells.append(temp)
             if self.generation != 0 and self.generation % 10 == 0:
                 Prey.mutationRate = 0.4
@@ -83,7 +84,7 @@ class NaturaNet:
         Prey.mutationRate = 0.2
         Prey.mutationStrength = 0.05
         self.generation += 1
-        if self.generation != 0 and self.generation % 15 == 0:
+        if self.generation % 15 == 0:
             self.generationTimeFrame += 5
         if self.generation != 0 and self.generation % 40 == 0:
             self.foodPerGeneration += 10
@@ -127,7 +128,8 @@ class NaturaNet:
                     if len(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords) == 1:
                         self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = False
                         self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
-                    self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
+                    if (food.x, food.y) in self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords:
+                        self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
                     #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
                     self.food.remove(food)
                     prey.foodEaten += 1
@@ -145,12 +147,16 @@ class NaturaNet:
                     pygame.draw.rect(self.display, self.cells[y][x].colour, (self.cells[y][x].x, self.cells[y][x].y, DEFAULT_CELL_SIZE[0], DEFAULT_CELL_SIZE[1]))
                 else:
                     pygame.draw.rect(self.display, (0,0,0), (self.cells[y][x].x, self.cells[y][x].y, DEFAULT_CELL_SIZE[0], DEFAULT_CELL_SIZE[1]))"""
+        text = self.font.render(f"Generation: {self.generation}", True, (0, 0, 0))
+        text.set_alpha(128)
+        self.display.blit(text, (10, 10))
         for food in self.food:
             if food is not None: pygame.draw.rect(self.display, Food.colour, (food.x, food.y, food.size, food.size))
         for prey in self.prey:
             if prey.TTL > 0: pygame.draw.rect(self.display, (0,0,255), (prey.x, prey.y, Prey.size, Prey.size))
         for pred in self.predators:
             pygame.draw.rect(self.display, (255,0,0), (pred.x, pred.y, pred.size, pred.size))
+        self.display.blit(text, (10, 10))
         pygame.display.flip()
 
     def run(self):

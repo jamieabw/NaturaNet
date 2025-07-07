@@ -1,15 +1,19 @@
 from NN.denseLayer import DenseLayer
 from NN.tanh import Tanh
+from NN.softmax import Softmax
 import numpy as np
 import math
 import pygame
 DEFAULT_PREY_SIZE = 7
 DEFAULT_PREY_VISION_SCOPE = 5
 DEFAULT_PREY_SPEED = 2
+# this will eventually be a child class of an Entity class which cleans this up
 class Prey:
     size = DEFAULT_PREY_SIZE
+    mutationRate = 0.2
+    mutationStrength = 0.05
     preyPopulation = 0
-    def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=15, darwinFactor=0):
+    def __init__(self, random, windowSize, cellSize, network=None, foodEaten=0, TTL=20, darwinFactor=0):
         self.x = random.randint(0, windowSize[0]-1)
         self.y = random.randint(0, windowSize[1]-1)
         self.cellSize = cellSize
@@ -18,16 +22,20 @@ class Prey:
         self.foodEaten = foodEaten
         self.TTL = TTL
         self.darwinFactor = darwinFactor
+        self.penalty = 0
+        self.moveCloserBonus = 0
+        self.shortestDistanceEver = 999
+        self.foodDiscovered = 0
+        self.previousXMove = 0
+        self.previousYMove = 0
         # intelligence will be based on distance to nearest food, distance to nearest predator, angle to both of those in degrees, and (x,y)
         # architecture is 6,10,10,16,2
         if network is None:
             self.intelligence = [
-                DenseLayer(2, 8),
+                DenseLayer(8, 6),
                 Tanh(),
-                DenseLayer(8, 8),
-                Tanh(),
-                DenseLayer(8,2),
-                Tanh()
+                DenseLayer(6, 5),
+                Softmax()
             ]
         else:
             self.intelligence = network
@@ -36,22 +44,51 @@ class Prey:
         if self.TTL <= 0:
             return
         euclideanDistance = math.sqrt((cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x) ** 2 + (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y) ** 2)
+        if euclideanDistance < self.shortestDistanceEver:
+            self.shortestDistanceEver = euclideanDistance
+            self.moveCloserBonus += 0.1
+
         #print(euclideanDistance / 120)
+        # TODO: you need to add further info for their decision making like distance to center etc
+        # NOTE: also make something to keep track of distance travelled so it can be used for darwinFactor
         dy, dx = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y),(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)
+        #print(dy, dx, euclideanDistance)
         #print(self.x, self.y, cells[foodCell[0]][foodCell[1]].foodCoords[0][0], cells[foodCell[0]][foodCell[1]].foodCoords[0][1])
-        angle = math.atan2(dy, dx) / math.pi
-        #print(angle * math.pi)
-        #print(dy, dx)
-        #print(self.x, self.y, foodCell[1] * 20, foodCell[0] * 20, angle * math.pi)
-        #print(np.array([self.x / 1000, self.y / 800, distanceToFood / 5, angle]))
-        #decision = self.predict(np.array([self.x / 1000, self.y / 800, distanceToFood / 5, angle, self.TTL / 30]))
-        decision = self.predict(np.array([dy / 100, dx/100]))
-        xMove, yMove = decision
+        distanceFromTop = self.y / self.windowSize[1]
+        distanceFromBottom = (self.windowSize[1] - self.y) / self.windowSize[1]
+        distanceFromLeft = self.x / self.windowSize[0]
+        distanceFromRight = (self.windowSize[0] - self.x) / self.windowSize[0]
+        #print(distanceFromBottom, distanceFromRight)
+        #angle = math.atan2(dy, dx) / math.pi
+        stimuli = np.array([dx / 100, dy/100, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
+        #print(stimuli)
+        noise = np.random.normal(0, 0.01, stimuli.shape) 
+        stimuli += noise
+        #print(stimuli)
+        decision = np.argmax(self.predict(stimuli))
+        #print(decision)
+        #upMove, downMove, leftMove, RightMove = decision
         #print(xMove.shape, yMove.shape)
+        xMove, yMove = 0,0
+        if decision == 0:
+            yMove = -1
+        elif decision == 1:
+            yMove = 1
+        elif decision == 2:
+            xMove = -1
+        elif decision == 3:
+            xMove = 1
+        elif decision == 4:
+            pass
+        self.previousXMove = xMove
+        self.previousYMove = yMove
+
         if self.x + xMove * DEFAULT_PREY_SPEED >= 1000 or self.x + xMove * DEFAULT_PREY_SPEED <= 0:
             xMove = 0
+            self.penalty += 0.5
         if self.y + yMove * DEFAULT_PREY_SPEED >= 800 or self.y + yMove * DEFAULT_PREY_SPEED <= 0:    
             yMove = 0
+            self.penalty += 0.5
         
         #print(int(self.y + yMove * DEFAULT_PREY_SPEED) // self.cellSize[1], int(self.x + xMove * DEFAULT_PREY_SPEED) // self.cellSize[0],)
         #print(np.array(cells).shape)
@@ -83,17 +120,15 @@ class Prey:
         #self.darwinFactor = self.foodEaten * deathPenalty * someOtherAttribute
         if self.TTL > 0:
             #print("survived")
-            self.darwinFactor = self.foodEaten * 2
+            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty
         else:
-            self.darwinFactor = self.foodEaten * 0.5
+            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty
             #print("dead")
         pass
 
     @classmethod
     def evolvePrey(cls, parentA, parentB):
         # no mutation added yet, pure natural selection
-        mutationRate = 0.05
-        mutationStrength = 0.1
         childNetwork = []
         #print(np.array(parentA.intelligence).shape)
         #print(np.array(parentB.intelligence).shape)
@@ -104,17 +139,29 @@ class Prey:
                 childWeights = np.where(weightMask, layerA.weights, layerB.weights)
                 childBias = np.where(biasMask, layerA.biases, layerB.biases)
                 newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
+                #
+                #print(childWeights)
                 #print(layerA.weights.shape[1], layerA.weights.shape[0])
-                if np.random.rand() < mutationRate:
+                """if np.random.rand() < mutationRate:
                     childWeights += np.random.normal(0, mutationStrength, childWeights.shape)
-                    childBias += np.random.normal(0, mutationStrength, childBias.shape)
+                    childBias += np.random.normal(0, mutationStrength, childBias.shape)"""
+                weightMutationMask = np.random.rand(*childWeights.shape) < cls.mutationRate
+                childWeights += weightMutationMask * np.random.normal(0, cls.mutationStrength, childWeights.shape)
+                biasMutationMask = np.random.rand(*childBias.shape)< cls.mutationRate
+                childBias += biasMutationMask * np.random.normal(0, cls.mutationStrength, childBias.shape)
                     #print(childWeights)
+                childWeights = np.clip(childWeights, -1, 1)
+                childBias   = np.clip(childBias, -1, 1)
+
                 newLayer.weights = childWeights
                 newLayer.biases = childBias
                 childNetwork.append(newLayer)
             elif isinstance(layerA, Tanh) and isinstance(layerB, Tanh):
                 # You can just copy one of them since activations do not have parameters
                 childNetwork.append(Tanh())
+            elif isinstance(layerA, Softmax) and isinstance(layerB, Softmax):
+                # You can just copy one of them since activations do not have parameters
+                childNetwork.append(Softmax())
             else:
                 raise ValueError(f"Layer mismatch: {type(layerA)} vs {type(layerB)}")
         #childNetwork.reverse()

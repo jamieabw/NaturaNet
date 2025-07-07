@@ -4,12 +4,14 @@ from food import Food
 from prey import Prey
 from predator import Predator
 import random
+import copy
 DEFAULT_WINDOW_SIZE = (1000, 800)
 DEFAULT_BG_COLOUR = (200,200,200)
 DEFAULT_CELL_SIZE = (20, 20)
-DEFAULT_PREY_GENERATION_POPULATION = 100
+DEFAULT_PREY_GENERATION_POPULATION = 200
 DEFAULT_PRED_GENERATION_POPULATION = 10
-DEFAULT_GENERATION_TIMEFRAME = 30
+DEFAULT_GENERATION_TIMEFRAME = 10
+DEFAULT_FOOD_POPULATION = 150
 
 class NaturaNet:
     def __init__(self, width=DEFAULT_WINDOW_SIZE[0], height=DEFAULT_WINDOW_SIZE[1], fps=60):
@@ -28,6 +30,9 @@ class NaturaNet:
         self.prey = []
         self.predators = []
         self.generation = 0
+        self.foodSpawnSize = 1
+        self.generationTimeFrame = DEFAULT_GENERATION_TIMEFRAME
+        self.foodPerGeneration = DEFAULT_FOOD_POPULATION
         for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
             temp = []
             for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
@@ -40,7 +45,9 @@ class NaturaNet:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
-        if self.clockTickCounter == self.fps * DEFAULT_GENERATION_TIMEFRAME or Prey.preyPopulation == 0:
+        allDead = all(prey.TTL <= 0 for prey in self.prey)
+        if self.clockTickCounter == self.fps * self.generationTimeFrame or allDead:
+            self.clockTickCounter = 0
             self.startNewGeneration()
 
     def startNewGeneration(self):
@@ -48,24 +55,41 @@ class NaturaNet:
             self.prey = [Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(DEFAULT_PREY_GENERATION_POPULATION)]
         else:
             newPrey = []
+            self.cells = []
+            for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
+                temp = []
+                for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
+                    temp.append(Cell(x, y, random.randint(0,1)))
+                self.cells.append(temp)
+            if self.generation != 0 and self.generation % 10 == 0:
+                Prey.mutationRate = 0.4
+                Prey.mutationStrength = 0.3
             sortedPrey = sorted(self.prey, key=lambda x : x.darwinFactor, reverse=True)
             topPrey = sortedPrey[:10]
-            print(f"TOP PREY: {[topPrey[i].darwinFactor for i in range(10)]}")
+            print(f"GENERATION: {self.generation}\nTOP PREY: {[topPrey[i].darwinFactor for i in range(10)]}")
             self.prey = []
-            for i in range(2):
-                newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=topPrey[i].intelligence.copy()))
-                print(f"GENERATION {self.generation}: {i} BEST SURVIVOR FROM PREVIOUS GENERATION: {topPrey[i].darwinFactor}")
-            while len(newPrey) < DEFAULT_PREY_GENERATION_POPULATION:
-                parentA = random.choice(sortedPrey[:2])
+            for i in range(5):                                                                                                                             
+                newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=copy.deepcopy(topPrey[i].intelligence)))
+            for i in range(5):
+                newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=None))
+                #print(f"GENERATION {self.generation}: {i} BEST SURVIVOR FROM PREVIOUS GENERATION: {topPrey[i].darwinFactor}")
+            while len(newPrey) != DEFAULT_PREY_GENERATION_POPULATION:
+                parentA = random.choice(topPrey)
                 parentB = random.choice(topPrey)
                 childIntelligence = Prey.evolvePrey(parentA, parentB)
                 if childIntelligence is not None:
-                    newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=childIntelligence.copy()))
+                    newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=copy.deepcopy(childIntelligence)))
             self.prey = newPrey
-        Prey.preyPopulation = DEFAULT_PREY_GENERATION_POPULATION
+        Prey.mutationRate = 0.2
+        Prey.mutationStrength = 0.05
         self.generation += 1
+        if self.generation != 0 and self.generation % 15 == 0:
+            self.generationTimeFrame += 5
+        if self.generation != 0 and self.generation % 40 == 0:
+            self.foodPerGeneration += 10
+            self.foodSpawnSize += 1
         self.predators = []
-        self.food = [Food(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(100)]
+        self.food = [Food(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodPerGeneration)]
         for food in self.food:
             self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = True
             self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.append((food.x, food.y))
@@ -73,7 +97,7 @@ class NaturaNet:
 
     def update(self):
         if self.clockTickCounter % self.fps == 0:
-            self.food.append(Food(random, (self.width, self.height), DEFAULT_CELL_SIZE))
+            self.food.extend([Food(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodSpawnSize)])
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].hasFood = True
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].foodCoords.append((self.food[-1].x, self.food[-1].y))
         if self.clockTickCounter % 5 == 0:
@@ -84,8 +108,12 @@ class NaturaNet:
                 prey.setDarwinFactor()
                 (y, x), distance = prey.findNearestFruit(self.cells)
                 prey.movement(distance, (y,x),random.randint(0,10), self.cells)
-                #cellToHigh = prey.findNearestFruit(self.cells)[0]
-                #self.cells[int(cellToHigh.y / 20)][int(cellToHigh.x / 20)].colour = (0,0,0)
+                #cellToHigh = self.cells[y][x]
+                #print()
+                #self.cells[y][x].colour = (0,0,0)
+                if not self.cells[y][x].discovered:
+                    self.cells[y][x].discovered = True
+                    prey.foodDiscovered += 1
         for prey in self.prey:
             if self.clockTickCounter % (self.fps) == 0:
                 prey.TTL -= 1
@@ -94,7 +122,13 @@ class NaturaNet:
             preyRect = prey.getRect()
             for food in self.food:
                 foodRect = food.getRect()
-                if food.parentCell == prey.parentCell and preyRect.colliderect(foodRect):
+                if preyRect.colliderect(foodRect):#food.parentCell == prey.parentCell and preyRect.colliderect(foodRect):
+                    
+                    if len(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords) == 1:
+                        self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = False
+                        self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
+                    self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
+                    #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
                     self.food.remove(food)
                     prey.foodEaten += 1
                     prey.TTL += 5

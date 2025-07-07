@@ -10,4 +10,7 @@ class Cell:
         self.hasFood = False
         self.hasPred = False
         self.foodCoords = []
+        self.discovered = False
+    def resetColour(self):
+        self.colour = DEFAULT_HEIGHT_COLOURS[self.heightLevel]
 

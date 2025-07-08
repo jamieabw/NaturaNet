@@ -2,10 +2,10 @@ from entity import Entity
 import numpy as np
 import math
 DEFAULT_PRED_SIZE = 18
-DEFAULT_PRED_SPEED = 4
+DEFAULT_PRED_SPEED = 2.1
 class Predator(Entity):
     sprite = None
-    def __init__(self, windowSize, cellSize, network=None, TTL=40):
+    def __init__(self, windowSize, cellSize, network=None, TTL=20):
         super().__init__(windowSize, cellSize, DEFAULT_PRED_SPEED, network, TTL, DEFAULT_PRED_SIZE, "Predator")
 
     def getStimuli(self, preyCell, cells, tileDistanceToPrey):
@@ -26,6 +26,11 @@ class Predator(Entity):
             self.moveCloserBonus += 0.1
         stimuli = self.getStimuli(nearestCellWithPrey, cells, distanceToCellWithPrey)
         super().movement(stimuli, cells)
+
+
+    def eat(self):
+        self.TTL += 2
+        self.foodEaten += 1
     
     def update(self, cells):
         self.setDarwinFactor()

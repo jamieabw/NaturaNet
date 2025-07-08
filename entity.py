@@ -27,9 +27,9 @@ class Entity:
         self.speed = speed
         if network is None and tag=="Prey":
             self.intelligence = [
-                DenseLayer(12, 8), # this will be different to predator eventually
+                DenseLayer(12, 12), # this will be different to predator eventually
                 Tanh(),
-                DenseLayer(8, 5),
+                DenseLayer(12, 5),
                 Softmax()
             ]
         elif network is None and tag=="Predator":
@@ -83,10 +83,10 @@ class Entity:
 
         if self.x + xMove * self.speed >= 1000 or self.x + xMove * self.speed <= 0:
             xMove = 0
-            self.penalty += 0.5
+            self.penalty += 1
         if self.y + yMove * self.speed >= 800 or self.y + yMove * self.speed <= 0:    
             yMove = 0
-            self.penalty += 0.5
+            self.penalty += 1
 
         self.previousXMove = xMove
         self.previousYMove = yMove

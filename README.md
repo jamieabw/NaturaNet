@@ -4,7 +4,7 @@
 
 This project is a Python-based simulation using Pygame and a simple neural network architecture to evolve prey agents over generations via natural selection.
 
-The prey agents learn to navigate a 2D environment to seek out food, avoid walls, and gradually develop more effective movement strategies.
+The prey agents learn to navigate a 2D environment to seek out food, avoid predators, and gradually develop more effective movement strategies.
 
 ---
 
@@ -12,7 +12,7 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid walls
 
 - Agents ("prey") use a basic neural network to decide movement directions.
 - Evolution is driven by natural selection:
-  - The most successful prey (based on a custom fitness factor) reproduce to form the next generation.
+  - The most successful prey and predators (based on a custom fitness factor) reproduce to form the next generation.
   - Genetic crossover and mutation are used to evolve weights and biases.
 - Agents can mutate to explore new behaviors.
 - Wall collisions penalize fitness, encouraging smarter exploration.
@@ -25,7 +25,6 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid walls
 
 ## Missing / Planned Features
 
-- Predators (planned but not implemented yet).
 - Terrain generation and varied obstacles (planned).
 - Reinforcement learning (may be explored in future versions).
 
@@ -35,6 +34,7 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid walls
 
 - Each agent's "intelligence" is a small neural network with inputs such as:
   - Distance and direction to food.
+  - Distance and direction to predator.
   - Distances to walls.
   - Previous movement decisions.
 - A generation runs until all agents die or time runs out.
@@ -47,7 +47,7 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid walls
 
 [Link here](https://youtu.be/TuRSZjvvx5c)
 
-Above is an example of natural selection over 130 generations with this project (does not use sprites as old version used)
+Above is an example of natural selection over 130 generations with this project (does not use sprites or include predators as old version used)
 
 ---
 
@@ -71,7 +71,6 @@ This is an active and experimental project:
 
 ## Future directions
 
-- Add predators for more complex ecosystem dynamics.
 - Implement terrain and environment variation.
 - Possibly integrate reinforcement learning to allow agents to learn from explicit rewards on a per-move basis.
 

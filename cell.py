@@ -8,9 +8,13 @@ class Cell:
         self.x = xPos * 20
         self.y = yPos * 20
         self.hasFood = False
+        self.hasPrey = False
         self.hasPred = False
         self.foodCoords = []
-        self.discovered = False
+        self.preyCoords = []
+        self.predCoords = []
+        self.foodDiscovered = False
+        self.preyDiscovered = False
     def resetColour(self):
         self.colour = DEFAULT_HEIGHT_COLOURS[self.heightLevel]
 

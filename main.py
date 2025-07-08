@@ -9,7 +9,7 @@ DEFAULT_WINDOW_SIZE = (1000, 800)
 DEFAULT_BG_COLOUR = (200,200,200)
 DEFAULT_CELL_SIZE = (20, 20)
 DEFAULT_PREY_GENERATION_POPULATION = 200
-DEFAULT_PRED_GENERATION_POPULATION = 10
+DEFAULT_PRED_GENERATION_POPULATION = 20
 DEFAULT_GENERATION_TIMEFRAME = 10
 DEFAULT_FOOD_POPULATION = 150
 
@@ -41,6 +41,15 @@ class NaturaNet:
             self.cells.append(temp)
         self.startNewGeneration()
         # NOTE: self.cells[y][x] accesses cell (x,y)
+        sprite = pygame.image.load("Assets\\food1.png").convert_alpha()
+        sprite = pygame.transform.scale(sprite, (11, 11))
+        Food.sprite = sprite
+        sprite = pygame.image.load("Assets\\prey1.png").convert_alpha()
+        sprite = pygame.transform.scale(sprite, (18, 18))
+        Prey.sprite = sprite
+        sprite = pygame.image.load("Assets\\pred1.png").convert_alpha()
+        sprite = pygame.transform.scale(sprite, (21, 21))
+        Predator.sprite = sprite
 
     def eventHandler(self):
         for event in pygame.event.get():
@@ -53,9 +62,9 @@ class NaturaNet:
 
     def startNewGeneration(self):
         if self.generation == 0:
-            self.prey = [Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(DEFAULT_PREY_GENERATION_POPULATION)]
+            self.prey = [Prey((self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(DEFAULT_PREY_GENERATION_POPULATION)]
+            self.predators = [Predator((self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(DEFAULT_PRED_GENERATION_POPULATION)]
         else:
-            newPrey = []
             self.cells = []
             for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
                 temp = []
@@ -65,22 +74,8 @@ class NaturaNet:
             if self.generation != 0 and self.generation % 10 == 0:
                 Prey.mutationRate = 0.4
                 Prey.mutationStrength = 0.3
-            sortedPrey = sorted(self.prey, key=lambda x : x.darwinFactor, reverse=True)
-            topPrey = sortedPrey[:10]
-            print(f"GENERATION: {self.generation}\nTOP PREY: {[topPrey[i].darwinFactor for i in range(10)]}")
-            self.prey = []
-            for i in range(5):                                                                                                                             
-                newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=copy.deepcopy(topPrey[i].intelligence)))
-            for i in range(5):
-                newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=None))
-                #print(f"GENERATION {self.generation}: {i} BEST SURVIVOR FROM PREVIOUS GENERATION: {topPrey[i].darwinFactor}")
-            while len(newPrey) != DEFAULT_PREY_GENERATION_POPULATION:
-                parentA = random.choice(topPrey)
-                parentB = random.choice(topPrey)
-                childIntelligence = Prey.evolvePrey(parentA, parentB)
-                if childIntelligence is not None:
-                    newPrey.append(Prey(random, (self.width, self.height), DEFAULT_CELL_SIZE, network=copy.deepcopy(childIntelligence)))
-            self.prey = newPrey
+            self.prey = Prey.regenPopulation(self.prey, self.generation, 10, Prey, self.width, self.height, DEFAULT_CELL_SIZE)
+            self.predators = Predator.regenPopulation(self.predators, self.generation, 5, Predator, self.width, self.height, DEFAULT_CELL_SIZE)
         Prey.mutationRate = 0.2
         Prey.mutationStrength = 0.05
         self.generation += 1
@@ -89,30 +84,56 @@ class NaturaNet:
         if self.generation != 0 and self.generation % 40 == 0:
             self.foodPerGeneration += 10
             self.foodSpawnSize += 1
-        self.predators = []
-        self.food = [Food(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodPerGeneration)]
+        self.food = [Food((self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodPerGeneration)]
         for food in self.food:
             self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = True
             self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.append((food.x, food.y))
+        for prey in self.prey:
+            self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.append((prey.x, prey.y))
+            self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = True
+        for pred in self.predators:
+            self.cells[pred.parentCell[1]][pred.parentCell[0]].predCoords.append((pred.x, pred.y))
+            self.cells[pred.parentCell[1]][pred.parentCell[0]].hasPred = True
         self.clockTickCounter = 0
 
     def update(self):
+        for row in self.cells:
+            for cell in row:
+                #print(cell.preyCoords)
+                #print(cell.predCoords)
+                cell.preyCoords = []
+                cell.hasPrey = False
+                cell.resetColour()
+
         if self.clockTickCounter % self.fps == 0:
-            self.food.extend([Food(random, (self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodSpawnSize)])
+            self.food.extend([Food((self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodSpawnSize)])
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].hasFood = True
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].foodCoords.append((self.food[-1].x, self.food[-1].y))
         if self.clockTickCounter % 5 == 0:
             for prey in self.prey:
                 #print(prey.TTL)
-                prey.setDarwinFactor()
-                (y, x), distance = prey.findNearestFruit(self.cells)
-                prey.movement(distance, (y,x),random.randint(0,10), self.cells)
+                #currentCell = (max(0,min((prey.x + (prey.size // 2)) // DEFAULT_CELL_SIZE[0], len(self.cells[0])-1)), max(0,min((prey.y + (prey.size // 2)) // DEFAULT_CELL_SIZE[1], len(self.cells)-1)))
+                #prey.parentCell = (currentCell[1], currentCell[0])
+                #print(currentCell, prey.parentCell)
+                prey.update(self.cells)
+                if prey.TTL > 0:
+                    self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.append((prey.x, prey.y))
+                    self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = True
+
+                
+                #print(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords)
+                #self.cells[prey.parentCell[1]][prey.parentCell[0]].colour = (0,0,0)
                 #cellToHigh = self.cells[y][x]
                 #print()
-                #self.cells[y][x].colour = (0,0,0)
-                if not self.cells[y][x].discovered:
-                    self.cells[y][x].discovered = True
-                    prey.foodDiscovered += 1
+            for row in self.cells:
+                for cell in row:
+                    cell.hasPred = False
+                    cell.predCoords = []
+                    
+            for pred in self.predators:
+                pred.update(self.cells)
+                self.cells[pred.parentCell[1]][pred.parentCell[0]].predCoords.append((pred.x, pred.y))
+                self.cells[pred.parentCell[1]][pred.parentCell[0]].hasPred = True
         for prey in self.prey:
             if self.clockTickCounter % (self.fps) == 0:
                 prey.TTL -= 1
@@ -125,7 +146,8 @@ class NaturaNet:
                     
                     if len(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords) == 1:
                         self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = False
-                        self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
+                        self.cells[food.parentCell[1]][food.parentCell[0]].foodDiscovered = False
+                        #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
                     if (food.x, food.y) in self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords:
                         self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
                     #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
@@ -133,6 +155,20 @@ class NaturaNet:
                     prey.foodEaten += 1
                     prey.TTL += 5
                     #print(prey.foodEaten)
+                    break
+            for pred in self.predators:
+                predRect = pred.getRect()
+                if preyRect.colliderect(predRect):
+                    if len(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords) == 1:
+                        self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = False
+                        self.cells[prey.parentCell[1]][prey.parentCell[0]].preyDiscovered = False
+                        #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
+                    if (prey.x, prey.y) in self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords:
+                        self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.remove((prey.x, prey.y))
+                        #print(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords)
+                        prey.TTL = 0
+                    pred.foodEaten += 1
+                    pred.TTL += 5
                     break
 
     
@@ -149,11 +185,13 @@ class NaturaNet:
         text.set_alpha(128)
         self.display.blit(text, (10, 10))
         for food in self.food:
-            if food is not None: self.display.blit(food.sprite, (food.x, food.y))
+            if food is not None: self.display.blit(Food.sprite, (food.x, food.y))
         for prey in self.prey:
-            if prey.TTL > 0: self.display.blit(prey.sprite, (prey.x, prey.y))
+            if prey.TTL > 0: self.display.blit(Prey.sprite, (prey.x, prey.y))
         for pred in self.predators:
-            pygame.draw.rect(self.display, (255,0,0), (pred.x, pred.y, pred.size, pred.size))
+            #print("pred")
+            if pred.TTL > 0: self.display.blit(Predator.sprite, (pred.x, pred.y))
+            #pygame.draw.rect(self.display, (255,0,0), (pred.x, pred.y, pred.size, pred.size))
         self.display.blit(text, (10, 10))
         pygame.display.flip()
 

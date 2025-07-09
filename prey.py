@@ -18,7 +18,7 @@ class Prey(Entity):
         dyFood, dxFood = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y)/100,(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)/100
         dyPred, dxPred = (cells[predCell[0]][predCell[1]].predCoords[0][1] - self.y)/220,(cells[predCell[0]][predCell[1]].predCoords[0][0] - self.x)/220
         stimuli = np.array([dxFood, dyFood, tileDistanceToFood / 6,
-                            dxPred, dyPred, tileDistanceToPred /6,
+                            dxPred, dyPred, tileDistanceToPred / 6, # THIS IS MENAT TO BE PREDATOR DISTANCE
                              distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight,
                                self.previousXMove, self.previousYMove])
         noise = np.random.normal(0, 0.01, stimuli.shape) 
@@ -44,6 +44,7 @@ class Prey(Entity):
         if not cells[nearestCellWithFood[0]][nearestCellWithFood[1]].foodDiscovered:
                     cells[nearestCellWithFood[0]][nearestCellWithFood[1]].foodDiscovered = True
                     self.foodDiscovered += 1
+                    #print("wdwd")
         #cells[nearestCellWithFood[0]][nearestCellWithFood[1]].colour = (0,0,0)
 
 

@@ -8,7 +8,7 @@ import copy
 DEFAULT_WINDOW_SIZE = (1000, 800)
 DEFAULT_BG_COLOUR = (200,200,200)
 DEFAULT_CELL_SIZE = (20, 20)
-DEFAULT_PREY_GENERATION_POPULATION = 100
+DEFAULT_PREY_GENERATION_POPULATION =100
 DEFAULT_PRED_GENERATION_POPULATION = 15
 DEFAULT_GENERATION_TIMEFRAME = 15
 DEFAULT_FOOD_POPULATION = 150
@@ -75,7 +75,7 @@ class NaturaNet:
                 Prey.mutationRate = 0.4
                 Prey.mutationStrength = 0.3
             self.prey = Prey.regenPopulation(self.prey, self.generation, 10, Prey, self.width, self.height, DEFAULT_CELL_SIZE)
-            self.predators = Predator.regenPopulation(self.predators, self.generation, 5, Predator, self.width, self.height, DEFAULT_CELL_SIZE)
+            self.predators = Predator.regenPopulation(self.predators, self.generation, 3, Predator, self.width, self.height, DEFAULT_CELL_SIZE)
         Prey.mutationRate = 0.2
         Prey.mutationStrength = 0.05
         self.generation += 1
@@ -152,8 +152,7 @@ class NaturaNet:
                         self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
                     #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
                     self.food.remove(food)
-                    prey.foodEaten += 1
-                    prey.TTL += 5
+                    prey.eat()
                     #print(prey.foodEaten)
                     break
             for pred in self.predators:
@@ -167,8 +166,7 @@ class NaturaNet:
                         self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.remove((prey.x, prey.y))
                         #print(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords)
                         prey.TTL = 0
-                    pred.foodEaten += 1
-                    pred.TTL += 5
+                    pred.eat()
                     break
 
     

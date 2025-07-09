@@ -38,4 +38,8 @@ class Predator(Entity):
         #print(distanceToCellWithPrey)
         #cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].colour = (0,0,0)
         self.movement(distanceToCellWithPrey, nearestCellWithPrey, cells)
+        if not cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].preyDiscovered:
+                    cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].preyDiscovered = True
+                    #print("ef")
+                    self.foodDiscovered += 1
         

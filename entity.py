@@ -5,6 +5,7 @@ from NN.tanh import Tanh
 from NN.softmax import Softmax
 import random
 import pygame
+
 class Entity:
     mutationRate = 0.2
     mutationStrength = 0.05
@@ -49,9 +50,10 @@ class Entity:
         previousSortedPopulation = sorted(previousPopulation, key=lambda x : x.darwinFactor, reverse=True)
         topNOfPopulation = previousSortedPopulation[:N]
         print(f"GENERATION {generation}: {[_.darwinFactor for _ in topNOfPopulation]}")
-        for i in range(5):
+        for i in range(3):
             newPopulation.append(entity((width, height), cellSize, network=topNOfPopulation[i].intelligence))
-
+        for i in range(2):
+            newPopulation.append(entity((width, height), cellSize, network=None))
         while len(newPopulation) != populationSize:
             parentA = random.choice(topNOfPopulation)
             parentB = random.choice(topNOfPopulation)

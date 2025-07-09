@@ -79,7 +79,7 @@ class NaturaNet:
         Prey.mutationRate = 0.2
         Prey.mutationStrength = 0.05
         self.generation += 1
-        if self.generation % 15 == 0:
+        if self.generation % 20 == 0 and self.generation <= 100:
             self.generationTimeFrame += 5
         if self.generation != 0 and self.generation % 40 == 0:
             self.foodPerGeneration += 10
@@ -109,14 +109,15 @@ class NaturaNet:
             self.food.extend([Food((self.width, self.height), DEFAULT_CELL_SIZE) for _ in range(self.foodSpawnSize)])
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].hasFood = True
             self.cells[self.food[-1].parentCell[1]][ self.food[-1].parentCell[0]].foodCoords.append((self.food[-1].x, self.food[-1].y))
-        if self.clockTickCounter % 5 == 0:
+        if self.clockTickCounter % 2 == 0:
             for prey in self.prey:
                 #print(prey.TTL)
                 #currentCell = (max(0,min((prey.x + (prey.size // 2)) // DEFAULT_CELL_SIZE[0], len(self.cells[0])-1)), max(0,min((prey.y + (prey.size // 2)) // DEFAULT_CELL_SIZE[1], len(self.cells)-1)))
                 #prey.parentCell = (currentCell[1], currentCell[0])
                 #print(currentCell, prey.parentCell)
-                prey.update(self.cells)
+
                 if prey.TTL > 0:
+                    prey.update(self.cells)
                     self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.append((prey.x, prey.y))
                     self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = True
 
@@ -131,43 +132,50 @@ class NaturaNet:
                     cell.predCoords = []
                     
             for pred in self.predators:
+                if pred.TTL <= 0:
+                    continue
                 pred.update(self.cells)
+                if self.clockTickCounter % (self.fps) == 0:
+                    pred.TTL -=1
                 self.cells[pred.parentCell[1]][pred.parentCell[0]].predCoords.append((pred.x, pred.y))
                 self.cells[pred.parentCell[1]][pred.parentCell[0]].hasPred = True
-        for prey in self.prey:
-            if self.clockTickCounter % (self.fps) == 0:
-                prey.TTL -= 1
-            if prey.TTL <= 0:
-                continue
-            preyRect = prey.getRect()
-            for food in self.food:
-                foodRect = food.getRect()
-                if preyRect.colliderect(foodRect):#food.parentCell == prey.parentCell and preyRect.colliderect(foodRect):
-                    
-                    if len(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords) == 1:
-                        self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = False
-                        self.cells[food.parentCell[1]][food.parentCell[0]].foodDiscovered = False
-                        #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
-                    if (food.x, food.y) in self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords:
-                        self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
-                    #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
-                    self.food.remove(food)
-                    prey.eat()
-                    #print(prey.foodEaten)
-                    break
-            for pred in self.predators:
-                predRect = pred.getRect()
-                if preyRect.colliderect(predRect):
-                    if len(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords) == 1:
-                        self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = False
-                        self.cells[prey.parentCell[1]][prey.parentCell[0]].preyDiscovered = False
-                        #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
-                    if (prey.x, prey.y) in self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords:
-                        self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.remove((prey.x, prey.y))
-                        #print(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords)
-                        prey.TTL = 0
-                    pred.eat()
-                    break
+                print(pred.TTL)
+            for prey in self.prey:
+                if self.clockTickCounter % (self.fps) == 0:
+                    prey.TTL -= 1
+                if prey.TTL <= 0:
+                    continue
+                preyRect = prey.getRect()
+                for food in self.food:
+                    foodRect = food.getRect()
+                    if preyRect.colliderect(foodRect):#food.parentCell == prey.parentCell and preyRect.colliderect(foodRect):
+                        
+                        if len(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords) == 1:
+                            self.cells[food.parentCell[1]][food.parentCell[0]].hasFood = False
+                            self.cells[food.parentCell[1]][food.parentCell[0]].foodDiscovered = False
+                            #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
+                        if (food.x, food.y) in self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords:
+                            self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords.remove((food.x, food.y))
+                        #print(self.cells[food.parentCell[1]][food.parentCell[0]].foodCoords)
+                        self.food.remove(food)
+                        prey.eat()
+                        #print(prey.foodEaten)
+                        break
+                for pred in self.predators:
+                    if pred.TTL <= 0:
+                        continue
+                    predRect = pred.getRect()
+                    if preyRect.colliderect(predRect):
+                        if len(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords) == 1:
+                            self.cells[prey.parentCell[1]][prey.parentCell[0]].hasPrey = False
+                            self.cells[prey.parentCell[1]][prey.parentCell[0]].preyDiscovered = False
+                            #self.cells[food.parentCell[1]][food.parentCell[0]].resetColour()
+                        if (prey.x, prey.y) in self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords:
+                            self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords.remove((prey.x, prey.y))
+                            #print(self.cells[prey.parentCell[1]][prey.parentCell[0]].preyCoords)
+                            prey.TTL = 0
+                        pred.eat()
+                        break
 
     
     def draw(self):

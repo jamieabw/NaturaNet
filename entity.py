@@ -26,6 +26,7 @@ class Entity:
         self.moveCloserBonus = 0
         self.shortestDistanceEver = 999
         self.speed = speed
+        self.eatenPenalty = 0
         if network is None and tag=="Prey":
             self.intelligence = [
                 DenseLayer(12, 12), # this will be different to predator eventually
@@ -50,9 +51,9 @@ class Entity:
         previousSortedPopulation = sorted(previousPopulation, key=lambda x : x.darwinFactor, reverse=True)
         topNOfPopulation = previousSortedPopulation[:N]
         print(f"GENERATION {generation}: {[_.darwinFactor for _ in topNOfPopulation]}")
-        for i in range(3):
+        for i in range(5):
             newPopulation.append(entity((width, height), cellSize, network=topNOfPopulation[i].intelligence))
-        for i in range(2):
+        for i in range(5):
             newPopulation.append(entity((width, height), cellSize, network=None))
         while len(newPopulation) != populationSize:
             parentA = random.choice(topNOfPopulation)
@@ -118,7 +119,7 @@ class Entity:
             #print("survived")
             self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty
         else:
-            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty
+            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty - self.eatenPenalty
             #print("dead")
 
     @classmethod

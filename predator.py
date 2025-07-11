@@ -2,7 +2,7 @@ from entity import Entity
 import numpy as np
 import math
 DEFAULT_PRED_SIZE = 18
-DEFAULT_PRED_SPEED = 2.1
+DEFAULT_PRED_SPEED = 1.05
 class Predator(Entity):
     sprite = None
     def __init__(self, windowSize, cellSize, network=None, TTL=20):
@@ -11,7 +11,7 @@ class Predator(Entity):
     def getStimuli(self, preyCell, cells, tileDistanceToPrey):
         distanceFromBottom, distanceFromTop, distanceFromLeft, distanceFromRight = super().getStimuli()
         dy, dx = (cells[preyCell[0]][preyCell[1]].preyCoords[0][1] - self.y)/220,(cells[preyCell[0]][preyCell[1]].preyCoords[0][0] - self.x)/220
-        stimuli = np.array([dx, dy, tileDistanceToPrey / 6, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
+        stimuli = np.array([dx, dy, tileDistanceToPrey / 12, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
         noise = np.random.normal(0, 0.01, stimuli.shape) 
         #print(f"PREDATOR FROM FOOD: \n{dx, dy}")
         return stimuli + noise
@@ -29,7 +29,7 @@ class Predator(Entity):
 
 
     def eat(self):
-        self.TTL += 2
+        self.TTL += 3
         self.foodEaten += 1
     
     def update(self, cells):
@@ -38,8 +38,8 @@ class Predator(Entity):
         #print(distanceToCellWithPrey)
         #cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].colour = (0,0,0)
         self.movement(distanceToCellWithPrey, nearestCellWithPrey, cells)
-        if not cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].preyDiscovered:
+        """if not cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].preyDiscovered:
                     cells[nearestCellWithPrey[0]][nearestCellWithPrey[1]].preyDiscovered = True
                     #print("ef")
-                    self.foodDiscovered += 1
+                    self.foodDiscovered +=1 """
         

@@ -7,7 +7,7 @@ import math
 import pygame
 import random
 DEFAULT_PREY_SIZE = 15
-DEFAULT_PREY_SPEED = 2
+DEFAULT_PREY_SPEED = 1
 class Prey(Entity):
     sprite = None
     def __init__(self, windowSize, cellSize, network=None, TTL=20, size=DEFAULT_PREY_SIZE):
@@ -16,9 +16,12 @@ class Prey(Entity):
     def getStimuli(self, foodCell, cells, tileDistanceToFood, predCell, tileDistanceToPred):
         distanceFromBottom, distanceFromTop, distanceFromLeft, distanceFromRight = super().getStimuli()
         dyFood, dxFood = (cells[foodCell[0]][foodCell[1]].foodCoords[0][1] - self.y)/100,(cells[foodCell[0]][foodCell[1]].foodCoords[0][0] - self.x)/100
-        dyPred, dxPred = (cells[predCell[0]][predCell[1]].predCoords[0][1] - self.y)/220,(cells[predCell[0]][predCell[1]].predCoords[0][0] - self.x)/220
+        if predCell is not None:
+            dyPred, dxPred = (cells[predCell[0]][predCell[1]].predCoords[0][1] - self.y)/220,(cells[predCell[0]][predCell[1]].predCoords[0][0] - self.x)/220
+        else:
+             dyPred, dxPred, tileDistanceToPred = 1200 / 220, 1200/220, 60
         stimuli = np.array([dxFood, dyFood, tileDistanceToFood / 6,
-                            dxPred, dyPred, tileDistanceToPred / 6, # THIS IS MENAT TO BE PREDATOR DISTANCE
+                            dxPred, dyPred, tileDistanceToPred / 12, # THIS IS MENAT TO BE PREDATOR DISTANCE
                              distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight,
                                self.previousXMove, self.previousYMove])
         noise = np.random.normal(0, 0.01, stimuli.shape) 
@@ -36,10 +39,13 @@ class Prey(Entity):
         stimuli = self.getStimuli(foodCell, cells, distanceToFood, predCell, distanceToPred)
         super().movement(stimuli, cells)
 
-    def update(self,cells):
+    def update(self,cells,generation, allDead):
         self.setDarwinFactor()
         (nearestCellWithFood), distanceToCellWithFood = self.findNearest(cells, "Food")
-        (nearestCellWithPred), distanceToCellWithPred = self.findNearest(cells, "Predator")
+        if generation >= 50 and not allDead:
+            (nearestCellWithPred), distanceToCellWithPred = self.findNearest(cells, "Predator")
+        else:
+             (nearestCellWithPred), distanceToCellWithPred = None, None
         self.movement(distanceToCellWithFood, nearestCellWithFood, distanceToCellWithPred, nearestCellWithPred, cells)
         if not cells[nearestCellWithFood[0]][nearestCellWithFood[1]].foodDiscovered:
                     cells[nearestCellWithFood[0]][nearestCellWithFood[1]].foodDiscovered = True

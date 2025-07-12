@@ -14,7 +14,9 @@ class Cell:
         self.preyCoords = []
         self.predCoords = []
         self.foodDiscovered = False
-        #self.preyDiscovered = False
     def resetColour(self):
+        """
+        Resets colour to its original colour, mostly used for debugging purposes.
+        """
         self.colour = DEFAULT_HEIGHT_COLOURS[self.heightLevel]
 

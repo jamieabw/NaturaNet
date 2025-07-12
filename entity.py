@@ -45,7 +45,12 @@ class Entity:
             self.intelligence = network
 
     @classmethod
-    def regenPopulation(cls, previousPopulation, generation, N, entity, width, height, cellSize):
+    def regenPopulation(cls, previousPopulation, generation, N, entity, width, height, cellSize) -> list:
+        """
+        Regenerates the population at the start of a new generation, gets the top N entities of that kind,
+        automatically reinjects the top 5 best entities, and inject 5 with random intelligence then refills
+        the rest of the population with merged networks from the top N best entities, applies random mutations too.
+        """
         newPopulation = []
         populationSize = len(previousPopulation)
         previousSortedPopulation = sorted(previousPopulation, key=lambda x : x.darwinFactor, reverse=True)
@@ -58,12 +63,14 @@ class Entity:
         while len(newPopulation) != populationSize:
             parentA = random.choice(topNOfPopulation)
             parentB = random.choice(topNOfPopulation)
-            #print(parentA, parentB)
             childIntelligence = cls.evolve(parentA, parentB)
             newPopulation.append(entity((width, height), cellSize, network=childIntelligence))
         return newPopulation
 
-    def getStimuli(self):
+    def getStimuli(self) -> tuple:
+        """
+        Returns a tuple of the distances from each wall to be called as a super in subclasses.
+        """
         distanceFromTop = self.y / self.windowSize[1]
         distanceFromBottom = (self.windowSize[1] - self.y) / self.windowSize[1]
         distanceFromLeft = self.x / self.windowSize[0]
@@ -71,6 +78,11 @@ class Entity:
         return (distanceFromBottom, distanceFromTop, distanceFromLeft, distanceFromRight)
 
     def movement(self, stimuli, cells):
+        """
+        Utilises the entities intelligence to make a decision of which direction to move, or
+        whether they should move at all. Applies a fixed penalty if an attempt to get out of
+        bounds is made to prevent wall hugging.
+        """
         decision = np.argmax(self.predict(stimuli))
         xMove, yMove = 0,0
         if decision == 0:
@@ -102,32 +114,41 @@ class Entity:
             self.x += xMove * self.speed
             self.y += yMove * self.speed
             self.parentCell = (newX, newY)
-            #print(self.parentCell)
 
-    def predict(self, input):
+    def predict(self, input) -> np.array:
+        """
+        Iteratively passes the input through the neural network to get the decision.
+        """
         output = input
         for layer in self.intelligence:
             output = layer.forwardPropagation(np.nan_to_num(output, nan=0.0))
         return output
 
     def eat(self):
+        """
+        Increases TTL (Time To Live) of entity when they consume their specific food type.
+        """
         self.TTL += 5
         self.foodEaten += 1
 
     def setDarwinFactor(self):
+        """
+        How the top N successful entities per generation are calculated, takes into account numerous bonuses
+        and penalties to weed out the most successful entities. Those who are deal get a heavily reduced fitness
+        regardless of food consumption.
+        """
         if self.TTL > 0:
-            #print("survived")
             self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty
         else:
             self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty - self.eatenPenalty
-            #print("dead")
 
     @classmethod
-    def evolve(cls, parentA, parentB):
-        # no mutation added yet, pure natural selection
+    def evolve(cls, parentA, parentB) -> list:
+        """
+        Merges two neural networks together randomly to simulate genetic inheritance,
+        mutations are randomly applied at random strengths to diversify the gene pool.
+        """
         childNetwork = []
-        #print(np.array(parentA.intelligence).shape)
-        #print(np.array(parentB.intelligence).shape)
         for layerA, layerB in zip(parentA.intelligence, parentB.intelligence):
             if isinstance(layerA, DenseLayer)and isinstance(layerB, DenseLayer):
                 weightMask = np.random.rand(*layerA.weights.shape) < 0.5
@@ -135,17 +156,10 @@ class Entity:
                 childWeights = np.where(weightMask, layerA.weights, layerB.weights)
                 childBias = np.where(biasMask, layerA.biases, layerB.biases)
                 newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
-                #
-                #print(childWeights)
-                #print(layerA.weights.shape[1], layerA.weights.shape[0])
-                """if np.random.rand() < mutationRate:
-                    childWeights += np.random.normal(0, mutationStrength, childWeights.shape)
-                    childBias += np.random.normal(0, mutationStrength, childBias.shape)"""
                 weightMutationMask = np.random.rand(*childWeights.shape) < cls.mutationRate
                 childWeights += weightMutationMask * np.random.normal(0, cls.mutationStrength, childWeights.shape)
                 biasMutationMask = np.random.rand(*childBias.shape)< cls.mutationRate
                 childBias += biasMutationMask * np.random.normal(0, cls.mutationStrength, childBias.shape)
-                    #print(childWeights)
                 childWeights = np.clip(childWeights, -1, 1)
                 childBias   = np.clip(childBias, -1, 1)
 
@@ -153,21 +167,21 @@ class Entity:
                 newLayer.biases = childBias
                 childNetwork.append(newLayer)
             elif isinstance(layerA, Tanh) and isinstance(layerB, Tanh):
-                # You can just copy one of them since activations do not have parameters
                 childNetwork.append(Tanh())
             elif isinstance(layerA, Softmax) and isinstance(layerB, Softmax):
-                # You can just copy one of them since activations do not have parameters
                 childNetwork.append(Softmax())
             else:
                 raise ValueError(f"Layer mismatch: {type(layerA)} vs {type(layerB)}")
-        #childNetwork.reverse()
-        #print(np.array(childNetwork).shape)
         return childNetwork
 
     def update(self):
         pass
 
-    def findNearest(self, cells, toFind):
+    def findNearest(self, cells, toFind) -> tuple:
+        """
+        Gets the nearest (specific type of entity [food, prey, predators]) using djikstra's then
+        calculates tile and x, y distance.
+        """
         startX, startY = self.parentCell
         cellsToCheck = [(startX, startY, 0)]  # (x, y, distance)
         visited = set()
@@ -180,7 +194,7 @@ class Entity:
                 gridHeight = len(cells)
                 if not (0 <= x < gridWidth and 0 <= y < gridHeight):
                     print(f"Out-of-bounds access attempt: x={x}, y={y}")
-                    continue  # skip this iteration
+                    continue 
                 currentCell = cells[y][x]
                 if toFind == "Food":
                     if currentCell.hasFood:
@@ -199,7 +213,11 @@ class Entity:
 
         return None, None # No reachable food
 
-    def getAdjacentCells(self, x, y, currentDist, visited, cells):
+    def getAdjacentCells(self, x, y, currentDist, visited, cells) -> list:
+        """
+        Returns the left, right, up and down cells relative to the cell the entity is in,
+        used for djikstra's.
+        """
         gridWidth = len(cells[0])
         gridHeight = len(cells)
         adjacentCells = []

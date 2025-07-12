@@ -38,7 +38,7 @@ class NaturaNet:
         for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
             temp = []
             for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                temp.append(Cell(x, y, random.randint(0,1)))
+                temp.append(Cell(x, y,0))
             self.cells.append(temp)
         self.startNewGeneration()
         # NOTE: self.cells[y][x] accesses cell (x,y)
@@ -72,7 +72,7 @@ class NaturaNet:
             for y in range(DEFAULT_WINDOW_SIZE[1] // DEFAULT_CELL_SIZE[1]):
                 temp = []
                 for x in range(DEFAULT_WINDOW_SIZE[0] // DEFAULT_CELL_SIZE[1]):
-                    temp.append(Cell(x, y, random.randint(0,1)))
+                    temp.append(Cell(x, y, 0))
                 self.cells.append(temp)
             if self.generation != 0 and self.generation % 10 == 0:
                 Prey.mutationRate = 0.4

@@ -1,6 +1,5 @@
 # Predator-Prey Evolution Simulator
 
-**Work in Progress!**
 
 This project is a Python-based simulation using Pygame and a simple neural network architecture to evolve prey agents over generations via natural selection.
 
@@ -23,10 +22,10 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid preda
 
 ---
 
-## Missing / Planned Features
+## Potential future features
 
-- Terrain generation and varied obstacles (planned).
-- Reinforcement learning (may be explored in future versions).
+- Terrain generation and varied obstacles.
+- Reinforcement learning.
 
 ---
 
@@ -66,12 +65,4 @@ This is an active and experimental project:
 - Python 3.x
 - Pygame
 - NumPy
-
----
-
-## Future directions
-
-- Implement terrain and environment variation.
-- Possibly integrate reinforcement learning to allow agents to learn from explicit rewards on a per-move basis.
-
 

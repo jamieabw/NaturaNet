@@ -9,7 +9,7 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid preda
 
 ## Features
 
-- Agents ("prey") use a basic neural network to decide movement directions.
+- Agents use a basic neural network to decide movement directions.
 - Evolution is driven by natural selection:
   - The most successful prey and predators (based on a custom fitness factor) reproduce to form the next generation.
   - Genetic crossover and mutation are used to evolve weights and biases.
@@ -39,14 +39,8 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid preda
 - A generation runs until all agents die or time runs out.
 - Top-performing agents are selected to produce the next generation through genetic crossover and mutation.
 - Over time, agents improve their ability to find and consume food.
-
----
-
-## Demonstration
-
-[Link here](https://youtu.be/TuRSZjvvx5c)
-
-Above is an example of natural selection over 130 generations with this project (does not use sprites or include predators as old version used)
+- At any time, press space to view the statistics of the learning process.
+- Predators introduced from generation 200 onwards to give prey a headstart.
 
 ---
 

@@ -5,6 +5,11 @@ DEFAULT_PRED_SIZE = 18
 DEFAULT_PRED_SPEED = 1.05
 class Predator(Entity):
     sprite = None
+    means = [0 * i for i in range(200)]
+    medians = [0 * i for i in range(200)]
+    bests = [0 * i for i in range(200)]
+    worsts = [0 * i for i in range(200)]
+    stds = [0 * i for i in range(200)]
     def __init__(self, windowSize, cellSize, network=None, TTL=20):
         super().__init__(windowSize, cellSize, DEFAULT_PRED_SPEED, network, TTL, DEFAULT_PRED_SIZE, "Predator")
 
@@ -15,7 +20,7 @@ class Predator(Entity):
         """
         distanceFromBottom, distanceFromTop, distanceFromLeft, distanceFromRight = super().getStimuli()
         dy, dx = (cells[preyCell[0]][preyCell[1]].preyCoords[0][1] - self.y)/220,(cells[preyCell[0]][preyCell[1]].preyCoords[0][0] - self.x)/220
-        stimuli = np.array([dx, dy, tileDistanceToPrey / 12, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
+        stimuli = np.array([dx, dy, distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight, self.previousXMove, self.previousYMove])
         noise = np.random.normal(0, 0.01, stimuli.shape) 
         return stimuli + noise
     

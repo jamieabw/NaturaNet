@@ -5,6 +5,11 @@ DEFAULT_PREY_SIZE = 15
 DEFAULT_PREY_SPEED = 1
 class Prey(Entity):
     sprite = None
+    means = []
+    medians = []
+    bests = []
+    worsts = []
+    stds = []
     def __init__(self, windowSize, cellSize, network=None, TTL=20, size=DEFAULT_PREY_SIZE):
         super().__init__(windowSize, cellSize, DEFAULT_PREY_SPEED, network, TTL, size, "Prey")
 
@@ -21,12 +26,13 @@ class Prey(Entity):
             dyPred, dxPred = (cells[predCell[0]][predCell[1]].predCoords[0][1] - self.y)/220,(cells[predCell[0]][predCell[1]].predCoords[0][0] - self.x)/220
         else:
              dyPred, dxPred, tileDistanceToPred = 1200 / 220, 1200/220, 60
-        stimuli = np.array([dxFood, dyFood, tileDistanceToFood / 6,
-                            dxPred, dyPred, tileDistanceToPred / 12, 
+        stimuli = np.array([dxFood, dyFood,
+                            dxPred, dyPred,
                              distanceFromTop, distanceFromBottom, distanceFromLeft, distanceFromRight,
                                self.previousXMove, self.previousYMove])
-        noise = np.random.normal(0, 0.01, stimuli.shape) 
-        return stimuli + noise
+        #print(stimuli)
+        #noise = np.random.normal(0, 0.01, stimuli.shape) 
+        return stimuli #+ noise
 
 
     def movement(self, distanceToFood, foodCell, distanceToPred, predCell, cells):

@@ -7,8 +7,8 @@ import random
 import pygame
 
 class Entity:
-    mutationRate = 0.2
-    mutationStrength = 0.05
+    mutationRate = 0.05
+    mutationStrength = 0.1
     def __init__(self, windowSize, cellSize, speed, network=None, TTL=20, size=7, tag=None):
         self.x = random.randint(0, windowSize[0]-40)
         self.y = random.randint(0, windowSize[1]-40)
@@ -27,18 +27,21 @@ class Entity:
         self.shortestDistanceEver = 999
         self.speed = speed
         self.eatenPenalty = 0
+        self.tag = tag
+        self.directionsTravelled = set()
+        self.directionPenalty = 0
         if network is None and tag=="Prey":
             self.intelligence = [
-                DenseLayer(12, 12), # this will be different to predator eventually
+                DenseLayer(10, 10), # this will be different to predator eventually
                 Tanh(),
-                DenseLayer(12, 5),
+                DenseLayer(10, 4),
                 Softmax()
             ]
         elif network is None and tag=="Predator":
             self.intelligence = [
-                DenseLayer(9, 8),
+                DenseLayer(8, 8),
                 Tanh(),
-                DenseLayer(8, 5),
+                DenseLayer(8, 4),
                 Softmax()
             ]
         else:
@@ -55,10 +58,25 @@ class Entity:
         populationSize = len(previousPopulation)
         previousSortedPopulation = sorted(previousPopulation, key=lambda x : x.darwinFactor, reverse=True)
         topNOfPopulation = previousSortedPopulation[:N]
-        print(f"GENERATION {generation}: {[_.darwinFactor for _ in topNOfPopulation]}")
+        populationStats = np.array([entity.darwinFactor for entity in previousSortedPopulation])
+        mean = float(np.mean(populationStats))
+        median = float(np.median(populationStats))
+        best = float(np.max(populationStats))
+        worst = float(np.min(populationStats))
+        std = float(np.std(populationStats))
+        cls.means.append(mean)
+        cls.medians.append(median)
+        cls.bests.append(best)
+        cls.worsts.append(worst)
+        cls.stds.append(std)
+        if entity.bests[0] == 0:
+            print(f"PREDATOR GENERATION {generation}:\nMean:{mean}\nMedian:{median}\nBest:{best}\nWorst:{worst}\nStandard Deviation:{std}")
+        else:
+            print(f"PREY GENERATION {generation}:\nMean:{mean}\nMedian:{median}\nBest:{best}\nWorst:{worst}\nStandard Deviation:{std}")
+
         for i in range(5):
             newPopulation.append(entity((width, height), cellSize, network=topNOfPopulation[i].intelligence))
-        for i in range(5):
+        for i in range(4):
             newPopulation.append(entity((width, height), cellSize, network=None))
         while len(newPopulation) != populationSize:
             parentA = random.choice(topNOfPopulation)
@@ -87,14 +105,21 @@ class Entity:
         xMove, yMove = 0,0
         if decision == 0:
             yMove = -1
+            self.directionsTravelled.add(0)
         elif decision == 1:
             yMove = 1
+            self.directionsTravelled.add(1)
         elif decision == 2:
             xMove = -1
+            self.directionsTravelled.add(2)
         elif decision == 3:
             xMove = 1
-        elif decision == 4:
+            self.directionsTravelled.add(3)
+        else:
             pass
+
+        if len(self.directionsTravelled) != 4:
+            self.directionPenalty = 50
 
         if self.x + xMove * self.speed >= 1000 or self.x + xMove * self.speed <= 0:
             xMove = 0
@@ -128,7 +153,7 @@ class Entity:
         """
         Increases TTL (Time To Live) of entity when they consume their specific food type.
         """
-        self.TTL += 5
+        self.TTL += 3
         self.foodEaten += 1
 
     def setDarwinFactor(self):
@@ -138,34 +163,39 @@ class Entity:
         regardless of food consumption.
         """
         if self.TTL > 0:
-            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty
+            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + self.TTL + (self.foodEaten * 20) - self.penalty - self.directionPenalty
         else:
-            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty - self.eatenPenalty
+            self.darwinFactor = self.moveCloserBonus + (self.foodDiscovered * 2) + (self.foodEaten * 5) - self.penalty - self.eatenPenalty - self.directionPenalty
 
     @classmethod
     def evolve(cls, parentA, parentB) -> list:
         """
-        Merges two neural networks together randomly to simulate genetic inheritance,
-        mutations are randomly applied at random strengths to diversify the gene pool.
+        Creates a child neural network by smoothly blending parent weights, with mild mutation.
         """
         childNetwork = []
         for layerA, layerB in zip(parentA.intelligence, parentB.intelligence):
-            if isinstance(layerA, DenseLayer)and isinstance(layerB, DenseLayer):
-                weightMask = np.random.rand(*layerA.weights.shape) < 0.5
-                biasMask = np.random.rand(*layerA.biases.shape) < 0.5
-                childWeights = np.where(weightMask, layerA.weights, layerB.weights)
-                childBias = np.where(biasMask, layerA.biases, layerB.biases)
-                newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
+            if isinstance(layerA, DenseLayer) and isinstance(layerB, DenseLayer):
+                alpha = np.random.uniform(0.4, 0.6)
+
+                childWeights = alpha * layerA.weights + (1 - alpha) * layerB.weights
+                childBias = alpha * layerA.biases + (1 - alpha) * layerB.biases
+
+                # Mutations: small perturbations
                 weightMutationMask = np.random.rand(*childWeights.shape) < cls.mutationRate
                 childWeights += weightMutationMask * np.random.normal(0, cls.mutationStrength, childWeights.shape)
-                biasMutationMask = np.random.rand(*childBias.shape)< cls.mutationRate
-                childBias += biasMutationMask * np.random.normal(0, cls.mutationStrength, childBias.shape)
-                childWeights = np.clip(childWeights, -1, 1)
-                childBias   = np.clip(childBias, -1, 1)
 
+                biasMutationMask = np.random.rand(*childBias.shape) < cls.mutationRate
+                childBias += biasMutationMask * np.random.normal(0, cls.mutationStrength, childBias.shape)
+
+                # Clip to avoid runaway weights
+                childWeights = np.clip(childWeights, -1, 1)
+                childBias = np.clip(childBias, -1, 1)
+
+                newLayer = DenseLayer(layerA.weights.shape[1], layerA.weights.shape[0])
                 newLayer.weights = childWeights
                 newLayer.biases = childBias
                 childNetwork.append(newLayer)
+
             elif isinstance(layerA, Tanh) and isinstance(layerB, Tanh):
                 childNetwork.append(Tanh())
             elif isinstance(layerA, Softmax) and isinstance(layerB, Softmax):
@@ -173,6 +203,7 @@ class Entity:
             else:
                 raise ValueError(f"Layer mismatch: {type(layerA)} vs {type(layerB)}")
         return childNetwork
+
 
     def update(self):
         pass

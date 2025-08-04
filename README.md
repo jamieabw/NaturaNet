@@ -61,8 +61,5 @@ This is an active and experimental project:
 ---
 
 ## Requirements
-
-- Python 3.x
-- Pygame
-- NumPy
+See [requirements.txt](requirements.txt)
 

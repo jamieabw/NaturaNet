@@ -47,15 +47,15 @@ class NaturaNet:
         self.startNewGeneration()
 
         # Load sprites
-        sprite = pygame.image.load("Assets\\food1.png").convert_alpha()
+        sprite = pygame.image.load("Assets/food1.png").convert_alpha()
         sprite = pygame.transform.scale(sprite, (11, 11))
         Food.sprite = sprite
 
-        sprite = pygame.image.load("Assets\\prey1.png").convert_alpha()
+        sprite = pygame.image.load("Assets/prey1.png").convert_alpha()
         sprite = pygame.transform.scale(sprite, (18, 18))
         Prey.sprite = sprite
 
-        sprite = pygame.image.load("Assets\\pred1.png").convert_alpha()
+        sprite = pygame.image.load("Assets/pred1.png").convert_alpha()
         sprite = pygame.transform.scale(sprite, (21, 21))
         Predator.sprite = sprite
 

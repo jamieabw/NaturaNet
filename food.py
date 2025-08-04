@@ -9,7 +9,7 @@ class Food:
         self.y = random.randint(0,windowSize[1]-40)
         self.size = FOOD_SIZE
         self.parentCell = ((self.x + (self.size // 2)) // cellSize[0], (self.y + (self.size // 2)) // cellSize[1])
-        self.sprite = pygame.image.load("Assets\\food1.png").convert_alpha()
+        self.sprite = pygame.image.load("Assets/food1.png").convert_alpha()
         self.sprite = pygame.transform.scale(self.sprite, (11, 11))
 
     def getRect(self):

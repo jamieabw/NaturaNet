@@ -25,7 +25,7 @@ The prey agents learn to navigate a 2D environment to seek out food, avoid preda
 ## Potential future features
 
 - Terrain generation and varied obstacles.
-- Reinforcement learning.
+- NEAT implementation.
 
 ---
 
